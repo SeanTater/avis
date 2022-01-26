@@ -1,18 +1,19 @@
-pub mod errors;
+mod errors;
+mod people;
+mod util;
 use errors::*;
 mod meshutil;
+use crate::meshutil::estimate_vertex_normals;
 use bevy::prelude::*;
 use r2d2_sqlite::SqliteConnectionManager;
 use std::f32::consts::PI;
 
-use crate::meshutil::estimate_vertex_normals;
-
-/// This example shows various ways to configure texture materials in 3D
 fn main() -> Result<()> {
     App::new()
         .insert_resource(Msaa { samples: 4 })
         .insert_resource(BuildingLoader::new()?)
         .add_plugins(DefaultPlugins)
+        .add_plugin(people::People)
         .add_startup_system(setup)
         .add_system(spin_cube)
         .run();
@@ -120,7 +121,15 @@ impl BuildingLoader {
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?
             .into_iter()
-            .map(|(x, y, z, rx, ry, rz, angle, path)| (Transform::from_xyz(x, y, z).with_rotation(Quat::from_axis_angle(Vec3::from([rx, ry, rz]).normalize(), angle)), assets.load(&path)))
+            .map(|(x, y, z, rx, ry, rz, angle, path)| {
+                (
+                    Transform::from_xyz(x, y, z).with_rotation(Quat::from_axis_angle(
+                        Vec3::from([rx, ry, rz]).normalize(),
+                        angle,
+                    )),
+                    assets.load(&path),
+                )
+            })
             .collect();
         Ok(res)
     }
@@ -128,9 +137,6 @@ impl BuildingLoader {
 
 #[derive(Component)]
 struct Cube;
-
-#[derive(Component)]
-struct Associate;
 
 /// sets up a scene with textured entities
 fn setup(
@@ -140,18 +146,6 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut buildings: ResMut<BuildingLoader>,
 ) {
-    let associate = assets.load("models/person/associate.glb");
-    for _ in 0..10 {
-        let transform = Transform
-            ::from_xyz(5. - 10.*rand::random::<f32>(), 0., 5. - 10.*rand::random::<f32>());
-            //.with_rotation(Quat::from_axis_angle(Vec3::Y, PI * rand::random::<f32>()));
-        commands
-            .spawn_bundle((Associate, transform, GlobalTransform::identity()))
-            .with_children(|parent| {
-                parent.spawn_scene(associate.clone());
-            });
-    }
-
     // this material renders the texture normally
     let material_handle = materials.add(StandardMaterial {
         base_color: Color::DARK_GREEN,
@@ -204,7 +198,7 @@ fn setup(
         },
         transform: Transform {
             translation: Vec3::new(0.0, 8.0, 0.0),
-            rotation: Quat::from_rotation_x(-PI/4.),
+            rotation: Quat::from_rotation_x(-PI / 4.),
             ..Default::default()
         },
         ..Default::default()
@@ -226,7 +220,7 @@ fn setup(
 fn spin_cube(mut transforms: Query<&mut Transform, With<Camera>>, time: Res<Time>) {
     for mut transform in transforms.iter_mut() {
         let sec = 0.1 * time.seconds_since_startup() as f32;
-        *transform = Transform::from_xyz(10. * sec.sin(), 5., 15. * sec.cos())
+        *transform = Transform::from_xyz(20. * sec.sin(), 10., 35. * sec.cos())
             .looking_at(Vec3::ZERO, Vec3::Y);
     }
 }
