@@ -1,6 +1,7 @@
 use std::f32::consts::PI;
 
 use bevy::prelude::*;
+use bevy_rapier3d::prelude::*;
 
 use crate::util::rand_range;
 
@@ -21,9 +22,22 @@ enum Role {
 
 #[derive(Clone, Copy)]
 enum Intent {
-    Walking(Vec3),
+    Walking {
+        proximal_target: Vec3,
+        final_target: Vec3,
+    },
     Waiting(f32),
-    Idle
+    Idle,
+}
+impl Intent {
+    /// Guess the next best step to move toward a target
+    /// This is a basic, shallow, greedy pathing algorithm
+    pub fn walk_to(final_target: Vec3) -> Self {
+        Intent::Walking {
+            proximal_target: final_target,
+            final_target,
+        }
+    }
 }
 
 impl Plugin for People {
@@ -66,49 +80,60 @@ fn add_people(mut commands: Commands, assets: Res<AssetServer>) {
                     Role::Associate => parent.spawn_scene(associate.clone()),
                     Role::Customer => parent.spawn_scene(customer.clone()),
                 };
+                parent
+                    .spawn_bundle(ColliderBundle {
+                        // This corresponds to personal space, not skin contact
+                        shape: ColliderShape::cuboid(0.3, 1.0, 2.0).into(),
+                        ..Default::default()
+                    })
+                    .insert_bundle(RigidBodyBundle::default())
+                    .insert(RigidBodyPositionSync::Discrete);
             });
     }
 }
 
-/// Choose where a person wants to go next
+/// Transition between intents
 fn update_people(mut people: Query<(&Transform, &mut Person)>, time: Res<Time>) {
     for (transform, mut person) in people.iter_mut() {
         person.intent = match person.intent {
-            current @ Intent::Walking(target) => {
-                if target.distance(transform.translation) < 1. {
+            current @ Intent::Walking {
+                proximal_target, ..
+            } => {
+                if proximal_target.distance(transform.translation) < 1. {
                     Intent::Idle
                 } else {
                     current
                 }
-            },
+            }
             Intent::Waiting(seconds) => {
                 if seconds <= 0.0 {
                     Intent::Idle
                 } else {
                     Intent::Waiting(seconds - time.delta_seconds())
                 }
-            },
-            Intent::Idle => {
-                match rand::random() {
-                    0.0..=0.8 => Intent::Waiting(1.0),
-                    0.8..=1.0 => Intent::Walking(somewhere()),
-                    _ => unreachable!()
-                }
             }
+            Intent::Idle => match rand::random() {
+                0u8..=200 => Intent::Waiting(1.0),
+                201..=255 => Intent::walk_to(somewhere()),
+            },
         };
     }
 }
 
 /// Animate people to move toward their targets
-fn animate_people(mut transforms: Query<(&mut Transform, &Person)>, time: Res<Time>) {
-    for (mut transform, person) in transforms.iter_mut() {
-        if let Intent::Walking(target) = person.intent {
-            let perfect_direction = transform.clone().looking_at(target, Vec3::Y);
+fn animate_people(mut tpp: Query<(&mut Transform, &Person)>, time: Res<Time>) {
+    for (mut transform, person) in tpp.iter_mut() {
+        if let Intent::Walking {
+            proximal_target, ..
+        } = person.intent
+        {
+            let perfect_direction = transform.clone().looking_at(proximal_target, Vec3::Y);
             // Turn in about 1/2 a second (it approaches exponentially)
             let turn_speed = 2.0;
-            transform.rotation = transform
-                .rotation
-                .lerp(perfect_direction.rotation, (time.delta_seconds() * turn_speed).min(0.25));
+            transform.rotation = transform.rotation.lerp(
+                perfect_direction.rotation,
+                (time.delta_seconds() * turn_speed).min(0.25),
+            );
             // Move only forward, by a steady amount
             transform.translation =
                 transform.translation + transform.forward() * person.speed * time.delta_seconds();

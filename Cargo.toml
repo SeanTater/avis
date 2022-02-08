@@ -7,8 +7,17 @@ edition = "2021"
 
 [dependencies]
 bevy = { version = "0.6", features = ["dynamic"] }
+bevy_rapier3d = { version = "*", features=["simd-stable"]}
+bevy_text_mesh = "0.1"
 thiserror = "1.0"
 rusqlite = "0.26"
 r2d2 = "0.8"
 r2d2_sqlite = "0.19"
 rand = "0.8"
+flume = "*"
+actix-web = "3.3"
+
+[dependencies.tokio-util]
+git = "https://github.com/tokio-rs/tokio"
+rev = "0b05ef6"
+features = ["full"]
