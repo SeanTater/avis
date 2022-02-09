@@ -1,27 +1,24 @@
-use std::sync::Arc;
 use crate::errors::*;
 
-use bevy::{prelude::*, render::camera::Camera};
+use crate::visuals::VisualAction;
+use bevy::{app::Events, prelude::*, render::camera::Camera};
 use bevy_text_mesh::prelude::*;
 use rand::prelude::*;
 
 // tessellation quality
 const MESH_QUALITY: Quality = Quality::Low;
-pub enum CloudAction {
-    AddWord(String)
-}
 
 #[derive(Debug, Clone)]
 pub struct WordCloudVisual {
-    sender: flume::Sender<CloudAction>,
-    receiver: flume::Receiver<CloudAction>,
+    sender: flume::Sender<VisualAction>,
+    receiver: flume::Receiver<VisualAction>,
 }
 impl WordCloudVisual {
     pub fn new() -> Self {
         let (sender, receiver) = flume::unbounded();
         Self { sender, receiver }
     }
-    pub fn edit(&self, action: CloudAction) -> Result<()> {
+    pub fn edit(&self, action: VisualAction) -> Result<()> {
         self.sender.send(action).map_err(|_| AvisError::DeadVisual)
     }
     pub fn start_app(&self) {
@@ -48,11 +45,12 @@ struct Cloud {
 struct Word;
 impl Word {
     /// Add a word in any random direction
-    fn add(commands: &mut Commands,
-            font: &Handle<TextMeshFont>,
-            material: &Handle<StandardMaterial>,
-            text: &str
-        ) {
+    fn add(
+        commands: &mut Commands,
+        font: &Handle<TextMeshFont>,
+        material: &Handle<StandardMaterial>,
+        text: &str,
+    ) {
         let mut rng = rand::thread_rng();
         let transform = Transform {
             translation: Vec3::new(
@@ -69,21 +67,21 @@ impl Word {
         );
 
         commands
-        .spawn_bundle(TextMeshBundle {
-            text_mesh: TextMesh {
-                text: text.into(),
-                style: TextMeshStyle {
-                    font: font.clone(),
-                    mesh_quality: MESH_QUALITY,
+            .spawn_bundle(TextMeshBundle {
+                text_mesh: TextMesh {
+                    text: text.into(),
+                    style: TextMeshStyle {
+                        font: font.clone(),
+                        mesh_quality: MESH_QUALITY,
+                        ..Default::default()
+                    },
                     ..Default::default()
                 },
+                transform,
                 ..Default::default()
-            },
-            transform,
-            ..Default::default()
-        })
-        .insert(Word)
-        .insert(material.clone());
+            })
+            .insert(Word)
+            .insert(material.clone());
     }
 }
 
@@ -129,10 +127,18 @@ fn setup_text_mesh(
 }
 
 /// Apply any incoming actions
-fn handle_action(mut commands: Commands, state: Res<Cloud>, receiver: Res<flume::Receiver<CloudAction>>) {
+fn handle_action(
+    mut commands: Commands,
+    state: Res<Cloud>,
+    receiver: Res<flume::Receiver<VisualAction>>,
+    mut app_exit_events: ResMut<Events<bevy::app::AppExit>>,
+) {
     for message in receiver.try_iter() {
         match message {
-            CloudAction::AddWord(text) => Word::add(&mut commands, &state.font, &state.material, &text)
+            VisualAction::AddWord(text) => {
+                Word::add(&mut commands, &state.font, &state.material, &text)
+            }
+            VisualAction::Exit => app_exit_events.send(bevy::app::AppExit),
         }
     }
 }

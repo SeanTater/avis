@@ -1,0 +1,18 @@
+card-deck {
+    display: block;
+}
+card-deck card {
+    display: inline-block;
+}
+
+card-deck card img {
+    width: 100%;
+}
+
+@media (min-width: 500px) {
+    card-deck card {
+        width: 100vw;
+        margin: 1vw;
+    }
+}
+

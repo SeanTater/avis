@@ -1,0 +1,22 @@
+@import url("milligram.css");
+@import url("card-deck.css");
+@import url("nav.css");
+
+body {
+    display: grid;
+    margin: 0;
+    grid-template-areas: 
+        "nav-top"
+        "main"
+        "nav-side";
+}
+
+@media (min-width: 640px) {
+    body {
+        width: 85vw;
+        margin: 2rem auto;
+        grid-template-areas: 
+            "nav-top nav-top nav-top"
+            "nav-side main main";
+    }
+}
