@@ -1,27 +1,29 @@
 use crate::errors::*;
 
 use crate::visuals::VisualAction;
-use bevy::{app::Events, prelude::*, render::camera::Camera};
+use bevy::{app::Events, prelude::*, render::camera::Camera, ecs::world::WorldBorrowMut};
 use bevy_text_mesh::prelude::*;
 use rand::prelude::*;
+
+use super::{Visual, OneshotReceiver, VisualMessage};
 
 // tessellation quality
 const MESH_QUALITY: Quality = Quality::Low;
 
 #[derive(Debug, Clone)]
 pub struct WordCloudVisual {
-    sender: flume::Sender<VisualAction>,
-    receiver: flume::Receiver<VisualAction>,
+    sender: flume::Sender<VisualMessage>,
+    receiver: flume::Receiver<VisualMessage>,
 }
 impl WordCloudVisual {
     pub fn new() -> Self {
         let (sender, receiver) = flume::unbounded();
         Self { sender, receiver }
     }
-    pub fn edit(&self, action: VisualAction) -> Result<()> {
-        self.sender.send(action).map_err(|_| AvisError::DeadVisual)
-    }
-    pub fn start_app(&self) {
+}
+
+impl Visual for WordCloudVisual {
+    fn start(&self, control: super::RemoteControl) -> Result<()> {
         App::new()
             .insert_resource(Msaa { samples: 4 })
             .insert_resource(self.receiver.clone())
@@ -32,7 +34,15 @@ impl WordCloudVisual {
             .add_system(rotate_camera)
             .add_system(update_legend)
             .add_system(handle_action)
+            .add_stage("Remote Control", control)
             .run();
+        Ok(())
+    }
+    fn react(&self, action: VisualAction) -> OneshotReceiver {
+        let (reply, reply_recv) = tokio::sync::oneshot::channel();
+        self.sender.send(VisualMessage { reply, action })
+            .unwrap_or_else(|_| { tracing::error!("Ignoring message sent to dead visual")});
+        reply_recv
     }
 }
 
@@ -130,16 +140,17 @@ fn setup_text_mesh(
 fn handle_action(
     mut commands: Commands,
     state: Res<Cloud>,
-    receiver: Res<flume::Receiver<VisualAction>>,
-    mut app_exit_events: ResMut<Events<bevy::app::AppExit>>,
+    receiver: Res<flume::Receiver<VisualMessage>>,
 ) {
     for message in receiver.try_iter() {
-        match message {
+        let VisualMessage{ reply, action} = message;
+        match action {
             VisualAction::AddWord(text) => {
                 Word::add(&mut commands, &state.font, &state.material, &text)
             }
-            VisualAction::Exit => app_exit_events.send(bevy::app::AppExit),
         }
+        // TODO: For exit, can we confirm this is done?
+        reply.send(Ok(())).unwrap_or_else(|_| tracing::info!("Reply sent to dead mailbox"));
     }
 }
 

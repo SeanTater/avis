@@ -12,6 +12,9 @@ pub enum AvisError {
     DeadVisual,
     #[error("Actix web server error: {:?}", 0)]
     ActixError(std::io::Error),
+    #[error("Reply callback was lost")]
+    ReplyLost(#[from] tokio::sync::oneshot::error::RecvError),
 }
+impl actix_web::ResponseError for AvisError {}
 
 pub type Result<X> = std::result::Result<X, AvisError>;

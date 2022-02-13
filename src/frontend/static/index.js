@@ -5,55 +5,26 @@ const Queue = createContext([]);
 const App = () => { 
     let [elements, setElements] = useState([
         {
-            name: "Me at the zoo",
-            author: "jawed",
-            thumbnail: "/static/placeholder.png"
+            name: "Regional sales word cloud",
+            author: "Sean",
+            thumbnail: "./static/screenshots/word-cloud-example.png"
         },
         {
-            name: "Never gonna give you up",
-            author: "Rick Astley",
-            thumbnail: "/static/placeholder.png"
+            name: "Store simulation",
+            author: "Sean",
+            thumbnail: "./static/screenshots/word-cloud-example.png"
         },
         {
-            name: "One",
-            author: "Person",
-            thumbnail: "/static/placeholder.png"
-        },
-        {
-            name: "One",
-            author: "Person",
-            thumbnail: "/static/placeholder.png"
-        },
-        {
-            name: "One",
-            author: "Person",
-            thumbnail: "/static/placeholder.png"
-        },
-        {
-            name: "One",
-            author: "Person",
-            thumbnail: "/static/placeholder.png"
-        },
-        {
-            name: "One",
-            author: "Person",
-            thumbnail: "/static/placeholder.png"
-        },
-        {
-            name: "One",
-            author: "Person",
-            thumbnail: "/static/placeholder.png"
-        },
-        {
-            name: "One",
-            author: "Person",
-            thumbnail: "/static/placeholder.png"
-        },
+            name: "Live transactions map",
+            author: "Sean",
+            thumbnail: "./static/screenshots/word-cloud-example.png"
+        }
     ]);
     return html`
-    <nav class="top"> <h1> Kibitz Home </h1> </nav>
+    <nav class="top"> <h1> Visual Manager </h1> </nav>
     <${Queue.Provider} value=${[]}>
         <main>
+            <h2>Select a visual</h2>
             <${MediaGrid} elements=${elements} />
         </main>
     </${Queue.Provider}>
