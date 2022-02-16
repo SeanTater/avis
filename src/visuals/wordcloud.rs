@@ -20,22 +20,34 @@ impl WordCloudVisual {
             .insert_resource(Msaa { samples: 4 })
             .add_plugins(DefaultPlugins)
             .add_plugin(TextMeshPlugin)
-            .add_startup_system(setup)
-            .add_startup_system(setup_text_mesh)
+            .add_startup_system(setup_background)
+            .add_startup_system(setup_cloud)
             .add_system(rotate_camera)
-            .add_system(update_legend)
+            .add_system(lock_rotations)
             .run();
         Ok(())
     }
 }
 
+/// Shared data from the word cloud
 struct Cloud {
     font: Handle<TextMeshFont>,
     material: Handle<StandardMaterial>,
 }
 
+/// Rotate this entity to always point to the camera
+#[derive(Component)]
+struct RotateLock;
+
+/// Any text that is part of the word cloud
 #[derive(Component)]
 struct Word;
+
+/// Some text that isn't part of the word cloud, a title
+#[derive(Component)]
+struct Legend;
+
+
 impl Word {
     /// Add a word in any random direction
     fn add(
@@ -74,14 +86,12 @@ impl Word {
                 ..Default::default()
             })
             .insert(Word)
+            .insert(RotateLock)
             .insert(material.clone());
     }
 }
 
-#[derive(Component)]
-struct Legend;
-
-fn setup_text_mesh(
+fn setup_cloud(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -114,6 +124,7 @@ fn setup_text_mesh(
             transform: Transform::from_xyz(0., 3., 0.),
             ..Default::default()
         })
+        .insert(RotateLock)
         .insert(Legend);
 
     for i in 0..32 {
@@ -123,38 +134,33 @@ fn setup_text_mesh(
     commands.insert_resource(state);
 }
 
+/// Orbit the center of the space, and rotate to face the center continuously
+///
+/// To make things a little more interesting, we'll make it elliptical
 fn rotate_camera(mut camera: Query<&mut Transform, With<Camera>>, time: Res<Time>) {
     for mut camera in camera.iter_mut() {
-        let angle = time.seconds_since_startup() as f32 / 2. + 1.55 * std::f32::consts::PI;
-
-        let distance = 6.5;
-
-        camera.translation = Vec3::new(
-            angle.sin() as f32 * distance,
-            camera.translation.y,
-            angle.cos() as f32 * distance,
-        );
-
-        *camera = camera.looking_at(Vec3::new(0.0, 1.5, 0.), Vec3::Y);
+        let sec = 0.2 * time.seconds_since_startup() as f32;
+        *camera = Transform::from_xyz(5. * sec.sin(), 5., 10. * sec.cos())
+            .looking_at(Vec3::ZERO, Vec3::Y);
     }
 }
 
 /// Keep the legend pointing at the camera all the time
-fn update_legend(
+fn lock_rotations(
     mut transform_pair: QuerySet<(
         QueryState<&Transform, With<Camera>>,
-        QueryState<&mut Transform, With<Legend>>,
+        QueryState<&mut Transform, With<RotateLock>>,
     )>,
 ) {
     let camera_translation = transform_pair.q0().single().translation;
-    for mut legend_transform in transform_pair.q1().iter_mut() {
+    for mut locked_transform in transform_pair.q1().iter_mut() {
         // eh - why negative?
-        *legend_transform = legend_transform.looking_at(-camera_translation, Vec3::Y);
+        *locked_transform = locked_transform.looking_at(-camera_translation, Vec3::Y);
     }
 }
 
-/// set up a simple 3D scene
-fn setup(
+/// Create some context around the cloud
+fn setup_background(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
