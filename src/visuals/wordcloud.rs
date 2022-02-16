@@ -1,12 +1,9 @@
 use crate::errors::*;
 
-use crate::visuals::VisualAction;
 use bevy::prelude::*;
 use bevy::render::camera::Camera;
 use bevy_text_mesh::prelude::*;
 use rand::prelude::*;
-
-use super::{Visual, OneshotReceiver, Link};
 
 // tessellation quality
 const MESH_QUALITY: Quality = Quality::Low;
@@ -17,10 +14,8 @@ impl WordCloudVisual {
     pub fn new() -> Self {
         Self
     }
-}
-
-impl Visual for WordCloudVisual {
-    fn start(&self, remote_stage: super::RemoteStage) -> Result<()> {
+    
+    pub fn start(&self) -> Result<()> {
         App::new()
             .insert_resource(Msaa { samples: 4 })
             .add_plugins(DefaultPlugins)
@@ -29,7 +24,6 @@ impl Visual for WordCloudVisual {
             .add_startup_system(setup_text_mesh)
             .add_system(rotate_camera)
             .add_system(update_legend)
-            .add_stage("Remote Control", remote_stage)
             .run();
         Ok(())
     }
@@ -121,6 +115,10 @@ fn setup_text_mesh(
             ..Default::default()
         })
         .insert(Legend);
+
+    for i in 0..32 {
+        Word::add(&mut commands, &state.font, &state.material, &format!("Example {}", i));
+    }
 
     commands.insert_resource(state);
 }
