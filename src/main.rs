@@ -5,11 +5,10 @@ use avis::visuals::VisualManager;
 use clap::Parser;
 
 fn graphics_main() -> Result<VisualManager> {
-    let vis = VisualManager::new();
+    let vis = VisualManager::new()?;
     for i in 0..10 {
-        vis.current()
-            .react(VisualAction::AddWord(format!("Example {}", i)))
-            .close();
+        vis
+            .send_msg(VisualAction::AddWord(format!("Example {}", i)));
     }
     Ok(vis)
 }
@@ -34,9 +33,9 @@ fn main() -> Result<()> {
         // Bevy's DefaultPlugins includes tracing_subscriber, which will error if called twice.
         graphics_main()?
     };
-    let vis_clone = vis.clone();
+    let vis_clone = VisualManager::new()?;
     std::thread::spawn(move || actix::main(vis_clone).unwrap());
-    vis.current().start()?;
+    vis.run();
     Ok(())
 }
 
@@ -50,7 +49,7 @@ mod actix {
 
     #[actix_web::main]
     pub async fn main(vis: VisualManager) -> std::io::Result<()> {
-        let server_baHttpServer::new(move || {
+        HttpServer::new(move || {
             App::new()
                 .data(vis.clone())
                 .route("/", web::get().to(index))

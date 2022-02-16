@@ -1,48 +1,37 @@
 use crate::errors::*;
 
 use crate::visuals::VisualAction;
-use bevy::{app::Events, prelude::*, render::camera::Camera, ecs::world::WorldBorrowMut};
+use bevy::prelude::*;
+use bevy::render::camera::Camera;
 use bevy_text_mesh::prelude::*;
 use rand::prelude::*;
 
-use super::{Visual, OneshotReceiver, VisualMessage};
+use super::{Visual, OneshotReceiver, Link};
 
 // tessellation quality
 const MESH_QUALITY: Quality = Quality::Low;
 
 #[derive(Debug, Clone)]
-pub struct WordCloudVisual {
-    sender: flume::Sender<VisualMessage>,
-    receiver: flume::Receiver<VisualMessage>,
-}
+pub struct WordCloudVisual;
 impl WordCloudVisual {
     pub fn new() -> Self {
-        let (sender, receiver) = flume::unbounded();
-        Self { sender, receiver }
+        Self
     }
 }
 
 impl Visual for WordCloudVisual {
-    fn start(&self, control: super::RemoteControl) -> Result<()> {
+    fn start(&self, remote_stage: super::RemoteStage) -> Result<()> {
         App::new()
             .insert_resource(Msaa { samples: 4 })
-            .insert_resource(self.receiver.clone())
             .add_plugins(DefaultPlugins)
             .add_plugin(TextMeshPlugin)
             .add_startup_system(setup)
             .add_startup_system(setup_text_mesh)
             .add_system(rotate_camera)
             .add_system(update_legend)
-            .add_system(handle_action)
-            .add_stage("Remote Control", control)
+            .add_stage("Remote Control", remote_stage)
             .run();
         Ok(())
-    }
-    fn react(&self, action: VisualAction) -> OneshotReceiver {
-        let (reply, reply_recv) = tokio::sync::oneshot::channel();
-        self.sender.send(VisualMessage { reply, action })
-            .unwrap_or_else(|_| { tracing::error!("Ignoring message sent to dead visual")});
-        reply_recv
     }
 }
 
@@ -134,24 +123,6 @@ fn setup_text_mesh(
         .insert(Legend);
 
     commands.insert_resource(state);
-}
-
-/// Apply any incoming actions
-fn handle_action(
-    mut commands: Commands,
-    state: Res<Cloud>,
-    receiver: Res<flume::Receiver<VisualMessage>>,
-) {
-    for message in receiver.try_iter() {
-        let VisualMessage{ reply, action} = message;
-        match action {
-            VisualAction::AddWord(text) => {
-                Word::add(&mut commands, &state.font, &state.material, &text)
-            }
-        }
-        // TODO: For exit, can we confirm this is done?
-        reply.send(Ok(())).unwrap_or_else(|_| tracing::info!("Reply sent to dead mailbox"));
-    }
 }
 
 fn rotate_camera(mut camera: Query<&mut Transform, With<Camera>>, time: Res<Time>) {

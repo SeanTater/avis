@@ -1,6 +1,5 @@
-use std::{ops::Deref, sync::Arc, sync::RwLock, collections::HashMap, str::FromStr};
+use std::{sync::Arc, sync::RwLock, str::FromStr};
 use bevy::prelude::{Stage, World};
-use tokio::sync::oneshot::{error::TryRecvError, channel};
 
 use crate::errors::Result;
 
@@ -8,7 +7,7 @@ pub mod wordcloud;
 
 /// A wrapper for controlling 3D visuals.
 /// This is safe to share across threads.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct VisualManager(Arc<RwLock<VisualManagerInner>>);
 impl VisualManager {
     /// Create a new visual manager.
@@ -22,38 +21,38 @@ impl VisualManager {
         self.0.write().unwrap().switch_mut(vis).await
     }
 
-    // Get the currently running visual.
-    // Don't keep this too long,
-    // since it keeps the visual from being changed while you're holding it.
-    // pub fn current(&self) -> impl Deref<Target=Box<dyn Visual>> + '_ {
-    //     &self.0.deref().read().unwrap().current
-    // }
+    /// Run the whole visual, blocking forever.
+    pub fn run(&self) -> Result<()> {
+        self.0.write().unwrap().start()
+    }
 }
 
-#[derive(Debug)]
 pub struct VisualManagerInner {
     current: Box<dyn Visual>,
     control: RemoteControl,
+    stage: Option<RemoteStage>
 }
 
 impl VisualManagerInner {
     fn new() -> Result<Self> {
-        let control = RemoteControl::default();
+        let (control, stage) = new_remote();
         let current = Visuals::default().create();
-        let offswitch=control.get_sender();
-        current.start(control)?;
-        Ok(Self { current, offswitch })
+        Ok(Self { current, control, stage: Some(stage) })
     }
 
     /// Change the current visual
     /// This is slow and blocking, but realistically, you can only do this once every few seconds anyway
     pub async fn switch_mut(&mut self, vis: Visuals) -> Result<()> {
         let (control, stage) = new_remote();
-        offswitch.send(Ok(()));
+        control.quit().await;
+        self.control = control;
         self.current = vis.create();
-        self.offswitch = control.get_sender();
-        self.current.start(control);
+        self.stage = Some(stage);
         Ok(())
+    }
+
+    pub fn start(&mut self) -> Result<()> {
+        self.stage.take().map(|stage| self.current.start(stage)).unwrap_or(Ok(()))
     }
 }
 
@@ -68,19 +67,10 @@ pub type OneshotSender = tokio::sync::oneshot::Sender<Result<()>>;
 /// A receiver, for when you need to be notified that the result is ready
 pub type OneshotReceiver = tokio::sync::oneshot::Receiver<Result<()>>;
 
-/// An action and it's associated reply box
-#[derive(Debug)]
-pub struct VisualMessage {
-    reply: OneshotSender,
-    action: VisualAction
-}
-
 /// A data visualization application
 pub trait Visual : std::fmt::Debug + Send + Sync {
     /// Start the application
-    fn start(&self, control: RemoteControl) -> Result<()>;
-    /// Respond to live changes to the application, usually from the webserver
-    fn react(&self, action: VisualAction) -> OneshotReceiver;
+    fn start(&self, remote_stage: RemoteStage) -> Result<()>;
 }
 
 #[derive(Debug, Clone)]
@@ -132,19 +122,23 @@ impl<X: Send+Sync> Link<X> {
 /// A stage for a Bevy pipeline, allowing control from outside
 struct RemoteControl(Link<()>);
 impl RemoteControl {
+    /// Quit the visual, and wait for confirmation it has finished.
     async fn quit(&self) {
-        self.0.outbound.send(());
-        self.0.inbound.recv_async()
+        if let Ok(_) = self.0.outbound.send(()) {
+            // Failure means the remote died, which is actually success this time
+            self.0.inbound.recv_async().await.unwrap_or_default()
+        }
+        // Too many quits, we must already be quitting, so no error
     }
 }
-struct RemoteStage(Link<()>);
+pub struct RemoteStage(Link<()>);
 fn new_remote() -> (RemoteControl, RemoteStage) {
     let (left, right) = Link::new();
     (RemoteControl(left), RemoteStage(right))
 }
-impl Stage for RemoteControl {
+impl Stage for RemoteStage {
     fn run(&mut self, world: &mut World) {
-        for msg in self.0.inbound.try_iter() {
+        for _msg in self.0.inbound.try_iter() {
             world.clear_entities();
             // Send back that the world is cleared
             self.0.outbound.send(()).unwrap_or_default();
