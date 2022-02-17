@@ -1,23 +1,32 @@
-use crate::errors::*;
+use crate::errors::Result;
 
 use bevy::prelude::*;
 use bevy::render::camera::Camera;
 use bevy_text_mesh::prelude::*;
 use rand::prelude::*;
+use serde::Deserialize;
 
 // tessellation quality
 const MESH_QUALITY: Quality = Quality::Low;
-
-#[derive(Debug, Clone)]
-pub struct WordCloudVisual;
+#[derive(Debug, Clone, Deserialize)]
+struct WordParams {
+    text: String,
+    size: f32
+}
+#[derive(Debug, Clone, Deserialize)]
+pub struct WordCloudVisual {
+    words: Vec<WordParams> 
+}
 impl WordCloudVisual {
-    pub fn new() -> Self {
-        Self
+    pub fn new(word_info: &std::path::Path) -> Result<Self> {
+        let file = std::fs::File::open(word_info)?;
+        Ok(serde_json::from_reader(file)?)
     }
     
-    pub fn start(&self) -> Result<()> {
+    pub fn start(self) -> Result<()> {
         App::new()
             .insert_resource(Msaa { samples: 4 })
+            .insert_resource(self)
             .add_plugins(DefaultPlugins)
             .add_plugin(TextMeshPlugin)
             .add_startup_system(setup_background)
@@ -55,6 +64,7 @@ impl Word {
         font: &Handle<TextMeshFont>,
         material: &Handle<StandardMaterial>,
         text: &str,
+        size: f32
     ) {
         let mut rng = rand::thread_rng();
         let transform = Transform {
@@ -63,7 +73,7 @@ impl Word {
                 rng.gen::<f32>() * 2.0,
                 rng.gen_range(-1.0..1.0) * 2.0,
             ),
-            scale: Vec3::ONE * (1. - rng.gen::<f32>() * 0.8) * 0.5,
+            scale: Vec3::ONE * size / 18.0,
             ..Default::default()
         }
         .looking_at(
@@ -94,6 +104,7 @@ impl Word {
 fn setup_cloud(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut commands: Commands,
+    visual: Res<WordCloudVisual>,
     asset_server: Res<AssetServer>,
 ) {
     let state = Cloud {
@@ -127,8 +138,8 @@ fn setup_cloud(
         .insert(RotateLock)
         .insert(Legend);
 
-    for i in 0..32 {
-        Word::add(&mut commands, &state.font, &state.material, &format!("Example {}", i));
+    for word in &visual.words {
+        Word::add(&mut commands, &state.font, &state.material, &word.text, word.size);
     }
 
     commands.insert_resource(state);
