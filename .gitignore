@@ -1,5 +1,6 @@
 /target
 /venv
+/data
 *.db
 assets
 assets-default
