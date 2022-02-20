@@ -6,15 +6,22 @@ use bevy_text_mesh::prelude::*;
 use rand::prelude::*;
 use serde::Deserialize;
 
-// tessellation quality
-const MESH_QUALITY: Quality = Quality::Low;
+lazy_static::lazy_static! {
+    static ref PRIMARY_COLOR: Color = Color::rgb_u8(1, 33, 105);
+}
+
+/// One row about a word
 #[derive(Debug, Clone, Deserialize)]
 struct WordParams {
     text: String,
-    size: f32
+    size: f32,
+    category: String
 }
+
+/// All the configuration for a cloud, readable as a JSON file
 #[derive(Debug, Clone, Deserialize)]
 pub struct WordCloudVisual {
+    title: String,
     words: Vec<WordParams> 
 }
 impl WordCloudVisual {
@@ -33,15 +40,17 @@ impl WordCloudVisual {
             .add_startup_system(setup_cloud)
             .add_system(rotate_camera)
             .add_system(lock_rotations)
+            .add_system(scoot_words)
             .run();
         Ok(())
     }
 }
 
 /// Shared data from the word cloud
-struct Cloud {
+struct CloudState {
     font: Handle<TextMeshFont>,
     material: Handle<StandardMaterial>,
+    category: Option<String>
 }
 
 /// Rotate this entity to always point to the camera
@@ -61,25 +70,29 @@ impl Word {
     /// Add a word in any random direction
     fn add(
         commands: &mut Commands,
+        materials: &mut Assets<StandardMaterial>,
         font: &Handle<TextMeshFont>,
-        material: &Handle<StandardMaterial>,
         text: &str,
         size: f32
     ) {
         let mut rng = rand::thread_rng();
         let transform = Transform {
             translation: Vec3::new(
-                rng.gen_range(-1.0..1.0) * 2.0,
-                rng.gen::<f32>() * 2.0,
-                rng.gen_range(-1.0..1.0) * 2.0,
+                rng.gen_range(-2.0..2.0),
+                rng.gen_range(0.0..4.0),
+                rng.gen_range(-2.0..2.0),
             ),
-            scale: Vec3::ONE * size / 18.0,
+            scale: Vec3::ONE * size.exp().sqrt() / 500.0,
             ..Default::default()
-        }
-        .looking_at(
-            Vec3::new(rng.gen::<f32>(), rng.gen::<f32>(), rng.gen::<f32>()),
-            Vec3::Y,
-        );
+        };
+        let color = fasthash::city::hash32(text.as_bytes()).to_be_bytes();
+        let color = Color::rgb_u8(color[0], color[1], color[2]);
+        let material = materials.add(StandardMaterial {
+            base_color: color,
+            emissive: Color::DARK_GRAY,
+            ..Default::default()
+        });
+
 
         commands
             .spawn_bundle(TextMeshBundle {
@@ -87,7 +100,11 @@ impl Word {
                     text: text.into(),
                     style: TextMeshStyle {
                         font: font.clone(),
-                        mesh_quality: MESH_QUALITY,
+                        color,
+                        ..Default::default()
+                    },
+                    size: TextMeshSize {
+                        wrapping: false,
                         ..Default::default()
                     },
                     ..Default::default()
@@ -107,27 +124,24 @@ fn setup_cloud(
     visual: Res<WordCloudVisual>,
     asset_server: Res<AssetServer>,
 ) {
-    let state = Cloud {
+    let state = CloudState {
         font: asset_server.load("fonts/FiraMono-Medium.ttf"),
         material: materials.add(StandardMaterial {
-            base_color: Color::BLACK,
-            unlit: true,
+            base_color: Color::WHITE,
             ..Default::default()
         }),
+        // Any category
+        category: Some(visual.words[rand::random::<usize>() % visual.words.len()].category.clone())
     };
 
     commands
         .spawn_bundle(TextMeshBundle {
             text_mesh: TextMesh {
-                text: String::from("Word Cloud Title"),
+                text: visual.title.clone(),
                 style: TextMeshStyle {
                     font: state.font.clone(),
                     font_size: SizeUnit::NonStandard(18.),
-                    color: Color::rgb(
-                        0x09 as f32 / 256.0,
-                        0x69 as f32 / 256.0,
-                        0xda as f32 / 256.0,
-                    ),
+                    color: *PRIMARY_COLOR,
                     ..Default::default()
                 },
                 ..Default::default()
@@ -139,7 +153,9 @@ fn setup_cloud(
         .insert(Legend);
 
     for word in &visual.words {
-        Word::add(&mut commands, &state.font, &state.material, &word.text, word.size);
+        if Some(&word.category) == state.category.as_ref() {
+            Word::add(&mut commands,  materials.as_mut(), &state.font, word.text.trim(), word.size);
+        }
     }
 
     commands.insert_resource(state);
@@ -170,6 +186,23 @@ fn lock_rotations(
     }
 }
 
+/// Space the words better
+fn scoot_words(
+    mut transforms: Query<(&mut Transform, &TextMesh)>,
+) {
+    let mut combo_iter = transforms.iter_combinations_mut();
+    while let Some([(left_transform, left_textmesh), (mut right_transform, right_textmesh)]) = combo_iter.fetch_next() {
+        let distance: f32 = left_transform.translation.distance(right_transform.translation);
+        let needed_distance: f32 = (
+            left_textmesh.text.len()
+            + right_textmesh.text.len()
+        ) as f32 / 500.0;
+        let push = 1.0 + (needed_distance - distance).tanh();
+        let push_vector = (right_transform.translation - left_transform.translation) * Vec3::from([1.0, 0.0, 1.0]) * 0.01 * push;
+        right_transform.translation = right_transform.translation + push_vector;
+    }
+}
+
 /// Create some context around the cloud
 fn setup_background(
     mut commands: Commands,
@@ -177,16 +210,32 @@ fn setup_background(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands.spawn_bundle(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Plane { size: 5.0 })),
-        material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+        mesh: meshes.add(Mesh::from(shape::Plane { size: 50.0 })),
+        material: materials.add( StandardMaterial {
+            base_color: *PRIMARY_COLOR,
+            perceptual_roughness: 0.5,
+            emissive: *PRIMARY_COLOR,
+            ..Default::default()
+        }),
+        transform: Transform::from_xyz(0.0, -1.0, 0.0),
         ..Default::default()
     });
-    commands.spawn_bundle(PointLightBundle {
-        transform: Transform::from_xyz(4.0, 8.0, 4.0),
+    commands.insert_resource(AmbientLight {
+        brightness: 0.6,
         ..Default::default()
     });
+    
+    commands.spawn_bundle(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            shadows_enabled: true,
+            color: Color::ANTIQUE_WHITE,
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
     commands.spawn_bundle(PerspectiveCameraBundle {
-        transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+        transform: Transform::from_xyz(-2.0, 3.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
     });
 }
