@@ -22,3 +22,6 @@ serde = "1.0"
 serde_json = "*"
 fasthash = "*"
 lazy_static = "*"
+
+[patch.crates-io]
+ttf2mesh-sys = { git = "https://github.com/SeanTater/ttf2mesh-rs", branch = "feature/fix-osx" }
