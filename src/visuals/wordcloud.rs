@@ -3,6 +3,7 @@ use crate::errors::Result;
 use bevy::prelude::*;
 use bevy::render::camera::Camera;
 use bevy_text_mesh::prelude::*;
+use bevy_fly_camera::{FlyCamera, FlyCameraPlugin};
 use rand::prelude::*;
 use serde::Deserialize;
 
@@ -32,13 +33,15 @@ impl WordCloudVisual {
     
     pub fn start(self) -> Result<()> {
         App::new()
+            .insert_resource(bevy_atmosphere::AtmosphereMat::default()) 
             .insert_resource(Msaa { samples: 4 })
             .insert_resource(self)
             .add_plugins(DefaultPlugins)
             .add_plugin(TextMeshPlugin)
+            .add_plugin(bevy_atmosphere::AtmospherePlugin { dynamic: false })
+            .add_plugin(bevy_fly_camera::FlyCameraPlugin)
             .add_startup_system(setup_background)
             .add_startup_system(setup_cloud)
-            .add_system(rotate_camera)
             .add_system(lock_rotations)
             .add_system(scoot_words)
             .run();
@@ -125,7 +128,7 @@ fn setup_cloud(
     asset_server: Res<AssetServer>,
 ) {
     let state = CloudState {
-        font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
         material: materials.add(StandardMaterial {
             base_color: Color::WHITE,
             ..Default::default()
@@ -161,17 +164,6 @@ fn setup_cloud(
     commands.insert_resource(state);
 }
 
-/// Orbit the center of the space, and rotate to face the center continuously
-///
-/// To make things a little more interesting, we'll make it elliptical
-fn rotate_camera(mut camera: Query<&mut Transform, With<Camera>>, time: Res<Time>) {
-    for mut camera in camera.iter_mut() {
-        let sec = 0.2 * time.seconds_since_startup() as f32;
-        *camera = Transform::from_xyz(5. * sec.sin(), 5., 10. * sec.cos())
-            .looking_at(Vec3::ZERO, Vec3::Y);
-    }
-}
-
 /// Keep the legend pointing at the camera all the time
 fn lock_rotations(
     mut transform_pair: QuerySet<(
@@ -205,6 +197,7 @@ fn scoot_words(
 
 /// Create some context around the cloud
 fn setup_background(
+    asset_server: Res<AssetServer>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -212,9 +205,8 @@ fn setup_background(
     commands.spawn_bundle(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Plane { size: 50.0 })),
         material: materials.add( StandardMaterial {
-            base_color: *PRIMARY_COLOR,
             perceptual_roughness: 0.5,
-            emissive: *PRIMARY_COLOR,
+            base_color_texture: Some(asset_server.load("textures/wood_floor.jpg")),
             ..Default::default()
         }),
         transform: Transform::from_xyz(0.0, -1.0, 0.0),
@@ -237,5 +229,6 @@ fn setup_background(
     commands.spawn_bundle(PerspectiveCameraBundle {
         transform: Transform::from_xyz(-2.0, 3.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
-    });
+    })
+    .insert(FlyCamera::default());
 }

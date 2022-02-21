@@ -177,6 +177,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bevy",
+ "bevy_atmosphere",
+ "bevy_fly_camera",
  "bevy_rapier3d",
  "bevy_text_mesh",
  "clap 3.1.1",
@@ -267,6 +269,16 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+]
+
+[[package]]
+name = "bevy_atmosphere"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73ee886bb884435a52f0cfc93e690374180e84c663e0d42c383b4ab12790633e"
+dependencies = [
+ "bevy",
+ "naga",
 ]
 
 [[package]]
@@ -387,6 +399,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "bevy_fly_camera"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7dd72cc40662337badaafa03cdc4953f759ba836faaf31e587a476bd9b573b42"
+dependencies = [
+ "bevy",
 ]
 
 [[package]]
@@ -1843,6 +1864,7 @@ dependencies = [
  "bytemuck",
  "byteorder",
  "color_quant",
+ "jpeg-decoder",
  "num-iter",
  "num-rational 0.3.2",
  "num-traits",
@@ -1948,6 +1970,12 @@ checksum = "af25a77299a7f711a01975c35a6a424eb6862092cc2d6c72c4ed6cbc56dfc1fa"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "jpeg-decoder"
+version = "0.1.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "229d53d58899083193af11e15917b5640cd40b29ff475a1fe4ef725deb02d0f2"
 
 [[package]]
 name = "js-sys"
@@ -3455,8 +3483,7 @@ dependencies = [
 [[package]]
 name = "ttf2mesh-sys"
 version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af5e0710272c5e800d64b02c846b0bd4ad819d62c32dc23f4e0b06acb0820cd6"
+source = "git+https://github.com/SeanTater/ttf2mesh-rs?branch=feature/fix-osx#2c53d9af871f0acf34de156b641ea8889e270916"
 dependencies = [
  "bindgen 0.59.2",
  "cc",

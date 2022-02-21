@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.6", features = ["dynamic"] }
+bevy = { version = "0.6", features = ["dynamic", "jpeg"] }
 bevy_rapier3d = { version = "*", features=["simd-stable"]}
 bevy_text_mesh = "0.1"
 anyhow = "1.0"
@@ -22,3 +22,8 @@ serde = "1.0"
 serde_json = "*"
 fasthash = "*"
 lazy_static = "*"
+bevy_atmosphere = "*"
+bevy_fly_camera = "*"
+
+[patch.crates-io]
+ttf2mesh-sys = { git = "https://github.com/SeanTater/ttf2mesh-rs", branch = "feature/fix-osx" }
