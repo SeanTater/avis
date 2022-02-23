@@ -4,3 +4,4 @@
 *.db
 assets
 assets-default
+Cargo.lock
