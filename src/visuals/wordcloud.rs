@@ -3,7 +3,6 @@ use crate::errors::Result;
 use bevy::prelude::*;
 use bevy::render::camera::Camera;
 use bevy_text_mesh::prelude::*;
-use bevy_fly_camera::{FlyCamera, FlyCameraPlugin};
 use rand::prelude::*;
 use serde::Deserialize;
 
@@ -52,7 +51,6 @@ impl WordCloudVisual {
 /// Shared data from the word cloud
 struct CloudState {
     font: Handle<TextMeshFont>,
-    material: Handle<StandardMaterial>,
     category: Option<String>
 }
 
@@ -230,5 +228,5 @@ fn setup_background(
         transform: Transform::from_xyz(-2.0, 3.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
     })
-    .insert(FlyCamera::default());
+    .insert(bevy_fly_camera::FlyCamera::default());
 }
