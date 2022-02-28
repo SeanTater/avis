@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 bevy = { version = "0.6", features = ["dynamic", "jpeg"] }
-bevy_rapier3d = { version = "*", features=["simd-stable"]}
 bevy_text_mesh = "0.1"
 anyhow = "1.0"
 rusqlite = "0.26"

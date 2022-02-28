@@ -127,10 +127,6 @@ fn setup_cloud(
 ) {
     let state = CloudState {
         font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-        material: materials.add(StandardMaterial {
-            base_color: Color::WHITE,
-            ..Default::default()
-        }),
         // Any category
         category: Some(visual.words[rand::random::<usize>() % visual.words.len()].category.clone())
     };

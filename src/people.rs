@@ -1,7 +1,6 @@
 use std::f32::consts::PI;
 
 use bevy::prelude::*;
-use bevy_rapier3d::prelude::*;
 
 use crate::util::rand_range;
 
@@ -80,14 +79,6 @@ fn add_people(mut commands: Commands, assets: Res<AssetServer>) {
                     Role::Associate => parent.spawn_scene(associate.clone()),
                     Role::Customer => parent.spawn_scene(customer.clone()),
                 };
-                parent
-                    .spawn_bundle(ColliderBundle {
-                        // This corresponds to personal space, not skin contact
-                        shape: ColliderShape::cuboid(0.3, 1.0, 2.0).into(),
-                        ..Default::default()
-                    })
-                    .insert_bundle(RigidBodyBundle::default())
-                    .insert(RigidBodyPositionSync::Discrete);
             });
     }
 }

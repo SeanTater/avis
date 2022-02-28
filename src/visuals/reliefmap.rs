@@ -1,18 +1,19 @@
-use avis::errors::*;
-use avis::meshutil::estimate_vertex_normals;
+use crate::errors::*;
+use crate::meshutil::estimate_vertex_normals;
 use bevy::prelude::*;
-use bevy_rapier3d::prelude::*;
 use std::f32::consts::PI;
 
 #[derive(Component)]
-struct Cube;
+struct Map;
 
-fn main() -> Result<()> {
+pub fn main() -> Result<()> {
     App::new()
+        .insert_resource(bevy_atmosphere::AtmosphereMat::default())
         .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
+        .add_plugin(bevy_atmosphere::AtmospherePlugin { dynamic: false })
+        .add_plugin(bevy_fly_camera::FlyCameraPlugin)
         .add_startup_system(setup)
-        .add_system(orbit_camera)
         .run();
     Ok(())
 }
@@ -91,7 +92,6 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // this material renders the texture normally
     let material_handle = materials.add(StandardMaterial {
         base_color: Color::DARK_GREEN,
         alpha_mode: AlphaMode::Blend,
@@ -99,13 +99,13 @@ fn setup(
         ..Default::default()
     });
 
-    let cube_rotation = Quat::from_axis_angle(Vec3::Y, PI / 4.);
+    let map_rotation = Quat::from_axis_angle(Vec3::Y, PI / 4.);
     let mesh = create_map();
 
-    // cube
-    commands.spawn().insert(Cube).insert_bundle(PbrBundle {
+    // Map
+    commands.spawn().insert(Map).insert_bundle(PbrBundle {
         mesh: meshes.add(mesh),
-        transform: Transform::from_rotation(cube_rotation),
+        transform: Transform::from_rotation(map_rotation),
         material: material_handle.clone(),
         ..Default::default()
     });
@@ -144,7 +144,7 @@ fn setup(
         transform: Transform::from_xyz(1.0, 2.0, 4.0)
             .looking_at(Vec3::from((10.0, 0.0, -10.)), Vec3::Y),
         ..Default::default()
-    });
+    }).insert(bevy_fly_camera::FlyCamera::default());
 }
 
 fn orbit_camera(mut transforms: Query<&mut Transform, With<Camera>>, time: Res<Time>) {
