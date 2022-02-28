@@ -1,0 +1,3 @@
+[submodule "us-maps"]
+	path = us-maps
+	url = git@github.com:jgoodall/us-maps.git
