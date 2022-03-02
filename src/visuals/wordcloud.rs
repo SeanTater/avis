@@ -15,24 +15,24 @@ lazy_static::lazy_static! {
 struct WordParams {
     text: String,
     size: f32,
-    category: String
+    category: String,
 }
 
 /// All the configuration for a cloud, readable as a JSON file
 #[derive(Debug, Clone, Deserialize)]
 pub struct WordCloudVisual {
     title: String,
-    words: Vec<WordParams> 
+    words: Vec<WordParams>,
 }
 impl WordCloudVisual {
     pub fn new(word_info: &std::path::Path) -> Result<Self> {
         let file = std::fs::File::open(word_info)?;
         Ok(serde_json::from_reader(file)?)
     }
-    
+
     pub fn start(self) -> Result<()> {
         App::new()
-            .insert_resource(bevy_atmosphere::AtmosphereMat::default()) 
+            .insert_resource(bevy_atmosphere::AtmosphereMat::default())
             .insert_resource(Msaa { samples: 4 })
             .insert_resource(self)
             .add_plugins(DefaultPlugins)
@@ -51,7 +51,7 @@ impl WordCloudVisual {
 /// Shared data from the word cloud
 struct CloudState {
     font: Handle<TextMeshFont>,
-    category: Option<String>
+    category: Option<String>,
 }
 
 /// Rotate this entity to always point to the camera
@@ -66,7 +66,6 @@ struct Word;
 #[derive(Component)]
 struct Legend;
 
-
 impl Word {
     /// Add a word in any random direction
     fn add(
@@ -74,7 +73,7 @@ impl Word {
         materials: &mut Assets<StandardMaterial>,
         font: &Handle<TextMeshFont>,
         text: &str,
-        size: f32
+        size: f32,
     ) {
         let mut rng = rand::thread_rng();
         let transform = Transform {
@@ -93,7 +92,6 @@ impl Word {
             emissive: Color::DARK_GRAY,
             ..Default::default()
         });
-
 
         commands
             .spawn_bundle(TextMeshBundle {
@@ -128,7 +126,11 @@ fn setup_cloud(
     let state = CloudState {
         font: asset_server.load("fonts/FiraSans-Bold.ttf"),
         // Any category
-        category: Some(visual.words[rand::random::<usize>() % visual.words.len()].category.clone())
+        category: Some(
+            visual.words[rand::random::<usize>() % visual.words.len()]
+                .category
+                .clone(),
+        ),
     };
 
     commands
@@ -151,7 +153,13 @@ fn setup_cloud(
 
     for word in &visual.words {
         if Some(&word.category) == state.category.as_ref() {
-            Word::add(&mut commands,  materials.as_mut(), &state.font, word.text.trim(), word.size);
+            Word::add(
+                &mut commands,
+                materials.as_mut(),
+                &state.font,
+                word.text.trim(),
+                word.size,
+            );
         }
     }
 
@@ -173,18 +181,21 @@ fn lock_rotations(
 }
 
 /// Space the words better
-fn scoot_words(
-    mut transforms: Query<(&mut Transform, &TextMesh)>,
-) {
+fn scoot_words(mut transforms: Query<(&mut Transform, &TextMesh)>) {
     let mut combo_iter = transforms.iter_combinations_mut();
-    while let Some([(left_transform, left_textmesh), (mut right_transform, right_textmesh)]) = combo_iter.fetch_next() {
-        let distance: f32 = left_transform.translation.distance(right_transform.translation);
-        let needed_distance: f32 = (
-            left_textmesh.text.len()
-            + right_textmesh.text.len()
-        ) as f32 / 500.0;
+    while let Some([(left_transform, left_textmesh), (mut right_transform, right_textmesh)]) =
+        combo_iter.fetch_next()
+    {
+        let distance: f32 = left_transform
+            .translation
+            .distance(right_transform.translation);
+        let needed_distance: f32 =
+            (left_textmesh.text.len() + right_textmesh.text.len()) as f32 / 500.0;
         let push = 1.0 + (needed_distance - distance).tanh();
-        let push_vector = (right_transform.translation - left_transform.translation) * Vec3::from([1.0, 0.0, 1.0]) * 0.01 * push;
+        let push_vector = (right_transform.translation - left_transform.translation)
+            * Vec3::from([1.0, 0.0, 1.0])
+            * 0.01
+            * push;
         right_transform.translation = right_transform.translation + push_vector;
     }
 }
@@ -198,7 +209,7 @@ fn setup_background(
 ) {
     commands.spawn_bundle(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Plane { size: 50.0 })),
-        material: materials.add( StandardMaterial {
+        material: materials.add(StandardMaterial {
             perceptual_roughness: 0.5,
             base_color_texture: Some(asset_server.load("textures/wood_floor.jpg")),
             ..Default::default()
@@ -210,7 +221,7 @@ fn setup_background(
         brightness: 0.6,
         ..Default::default()
     });
-    
+
     commands.spawn_bundle(DirectionalLightBundle {
         directional_light: DirectionalLight {
             shadows_enabled: true,
@@ -220,9 +231,10 @@ fn setup_background(
         ..Default::default()
     });
 
-    commands.spawn_bundle(PerspectiveCameraBundle {
-        transform: Transform::from_xyz(-2.0, 3.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..Default::default()
-    })
-    .insert(bevy_fly_camera::FlyCamera::default());
+    commands
+        .spawn_bundle(PerspectiveCameraBundle {
+            transform: Transform::from_xyz(-2.0, 3.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+            ..Default::default()
+        })
+        .insert(bevy_fly_camera::FlyCamera::default());
 }

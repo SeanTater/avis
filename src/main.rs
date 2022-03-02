@@ -13,13 +13,16 @@ fn main() -> Result<()> {
         .get_matches();
     match args.subcommand() {
         Some(("wordcloud", subargs)) => {
-            avis::visuals::wordcloud::WordCloudVisual::new(&subargs.value_of_t_or_exit::<PathBuf>("words"))?.start()?;
-        },
+            avis::visuals::wordcloud::WordCloudVisual::new(
+                &subargs.value_of_t_or_exit::<PathBuf>("words"),
+            )?
+            .start()?;
+        }
         Some(("map", _subargs)) => {
             avis::visuals::reliefmap::main()?;
         }
-        _ => panic!("Please choose a command")
+        _ => panic!("Please choose a command"),
     }
-    
+
     Ok(())
 }

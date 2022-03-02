@@ -1,7 +1,15 @@
 use crate::errors::*;
 use crate::meshutil::estimate_vertex_normals;
 use bevy::prelude::*;
+use bevy::render::mesh::Indices;
+use bevy::render::render_resource::PrimitiveTopology;
+use geo::prelude::*;
+use geo::simplifyvw::SimplifyVWPreserve;
+use geo::MultiPolygon;
+use geo::Triangle;
+use geojson::Geometry;
 use std::f32::consts::PI;
+use std::io::Read;
 
 #[derive(Component)]
 struct Map;
@@ -98,8 +106,85 @@ fn setup(
         unlit: false,
         ..Default::default()
     });
-
     let map_rotation = Quat::from_axis_angle(Vec3::Y, PI / 4.);
+
+    // This JSON is invalid UTF8, unfortunately, so we fix it on the fly, which uses more memory.
+    let shapes = std::fs::read("us-maps/geojson/county.geo.json")
+        .expect("Couldn't find the county geojson file. Please makes sure you initialized the git submodule");
+    let shapes = String::from_utf8_lossy(&shapes)
+        .parse::<geojson::GeoJson>()
+        .expect("Couldn't read the county-level US map geo-json");
+    geojson::quick_collection(&shapes)
+        .expect("Failed to interpret map json as a collection")
+        .into_iter()
+        .flat_map(|geom: geo::Geometry<f32> | match geom {
+            geo::Geometry::MultiPolygon(mp) => mp.0,
+            geo::Geometry::Polygon(p) => vec![p],
+            _ => vec![]
+        })//geom.try_into().ok())
+        //.flat_map(|mpoly: geo::Polygon<f32>| mpoly.into_iter())
+        //.map(|poly| poly.simplifyvw_preserve(&0.0001))
+        .map(|poly| {
+            eprint!(".");
+            let altitude = rand::random::<f32>() / 50.0;
+            let tris = delaunator::triangulate(
+                &poly
+                    .exterior()
+                    .points()
+                    .map(|p| delaunator::Point {
+                        x: -p.x() as f64,
+                        y: p.y() as f64,
+                    })
+                    .collect::<Vec<_>>(),
+            );
+
+            let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+            let positions = poly
+                .exterior()
+                .points()
+                .map(|p| [-p.x() / 10., altitude, p.y() / 10.])
+                .collect::<Vec<_>>();
+            let uv0 = poly
+                .exterior()
+                .points()
+                .map(|p| [0.5+(p.x() / 360.0), 0.5+(p.y() / 360.0)])
+                .collect::<Vec<_>>();
+            let indices = tris
+                .triangles
+                .into_iter()
+                .map(|u| u as u32)
+                .collect::<Vec<_>>();
+            // let normals = (0..positions.len() / 3).flat_map(|_| [0.,1.,0.]).collect::<Vec<_>>();
+            let normals = estimate_vertex_normals(
+                &positions.iter().map(|v| Vec3::from(*v)).collect::<Vec<_>>(),
+                &indices,
+            )
+            .expect("Couldn't guess normals")
+            .into_iter()
+            .map(|v| v.to_array())
+            .collect::<Vec<_>>();
+            //mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, vec![[1.0, 1.0, 0.0, 1.0]; positions.len()]);
+            mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+            mesh.set_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+            mesh.set_attribute(Mesh::ATTRIBUTE_UV_0, uv0);
+            mesh.set_indices(Some(Indices::U32(indices)));
+            mesh
+        })
+        .for_each(|mesh| {
+            let material = materials.add(StandardMaterial {
+                base_color: Color::rgb(rand::random(), rand::random(), rand::random()),
+                alpha_mode: AlphaMode::Blend,
+                unlit: false,
+                ..Default::default()
+            });
+            commands.spawn().insert(Map).insert_bundle(PbrBundle {
+                mesh: meshes.add(mesh),
+                transform: Transform::from_rotation(map_rotation),
+                material,
+                ..Default::default()
+            });
+        });
+
     let mesh = create_map();
 
     // Map
@@ -140,17 +225,11 @@ fn setup(
     });
 
     // camera
-    commands.spawn_bundle(PerspectiveCameraBundle {
-        transform: Transform::from_xyz(1.0, 2.0, 4.0)
-            .looking_at(Vec3::from((10.0, 0.0, -10.)), Vec3::Y),
-        ..Default::default()
-    }).insert(bevy_fly_camera::FlyCamera::default());
-}
-
-fn orbit_camera(mut transforms: Query<&mut Transform, With<Camera>>, time: Res<Time>) {
-    for mut transform in transforms.iter_mut() {
-        let sec = 0.1 * time.seconds_since_startup() as f32;
-        *transform = Transform::from_xyz(20. * sec.sin(), 10., 35. * sec.cos())
-            .looking_at(Vec3::ZERO, Vec3::Y);
-    }
+    commands
+        .spawn_bundle(PerspectiveCameraBundle {
+            transform: Transform::from_xyz(1.0, 2.0, 4.0)
+                .looking_at(Vec3::from((10.0, 0.0, -10.)), Vec3::Y),
+            ..Default::default()
+        })
+        .insert(bevy_fly_camera::FlyCamera::default());
 }

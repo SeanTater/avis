@@ -23,6 +23,9 @@ fasthash = "*"
 lazy_static = "*"
 bevy_atmosphere = "*"
 bevy_fly_camera = "*"
+geojson = {version="*", features=["geo-types"]}
+geo = "*"
+delaunator = "*"
 
 [patch.crates-io]
 ttf2mesh-sys = { git = "https://github.com/SeanTater/ttf2mesh-rs", branch = "feature/fix-osx" }

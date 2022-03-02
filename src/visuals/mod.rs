@@ -1,2 +1,2 @@
-pub mod wordcloud;
 pub mod reliefmap;
+pub mod wordcloud;
