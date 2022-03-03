@@ -113,7 +113,7 @@ impl Word {
             })
             .insert(Word)
             .insert(RotateLock)
-            .insert(material.clone());
+            .insert(material);
     }
 }
 
@@ -196,7 +196,7 @@ fn scoot_words(mut transforms: Query<(&mut Transform, &TextMesh)>) {
             * Vec3::from([1.0, 0.0, 1.0])
             * 0.01
             * push;
-        right_transform.translation = right_transform.translation + push_vector;
+        right_transform.translation += push_vector;
     }
 }
 

@@ -4,12 +4,7 @@ use anyhow::*;
 use bevy::prelude::*;
 use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
-use geo::prelude::*;
-use geo::simplifyvw::SimplifyVWPreserve;
-use geo::MultiPolygon;
-use geo::Triangle;
 use std::f32::consts::PI;
-use std::str::FromStr;
 
 #[derive(Component)]
 struct County {
@@ -137,7 +132,7 @@ fn setup_counties(
     for county in read_counties().expect("Failed to read counties") {
         // We could simplify the polygons to accelerate rendering, but it seems unnecessary.
         //.map(|poly| poly.simplifyvw_preserve(&0.0001))
-        let ref poly = county.polygon;
+        let poly = &county.polygon;
         eprint!(".");
         let altitude = rand::random::<f32>() / 50.0;
         let tris = delaunator::triangulate(

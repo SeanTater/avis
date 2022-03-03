@@ -118,7 +118,7 @@ fn animate_people(mut tpp: Query<(&mut Transform, &Person)>, time: Res<Time>) {
             proximal_target, ..
         } = person.intent
         {
-            let perfect_direction = transform.clone().looking_at(proximal_target, Vec3::Y);
+            let perfect_direction = transform.looking_at(proximal_target, Vec3::Y);
             // Turn in about 1/2 a second (it approaches exponentially)
             let turn_speed = 2.0;
             transform.rotation = transform.rotation.lerp(
@@ -126,6 +126,7 @@ fn animate_people(mut tpp: Query<(&mut Transform, &Person)>, time: Res<Time>) {
                 (time.delta_seconds() * turn_speed).min(0.25),
             );
             // Move only forward, by a steady amount
+            // Can't use assign because transform.forward() wants an immutable borrow
             transform.translation =
                 transform.translation + transform.forward() * person.speed * time.delta_seconds();
         }
