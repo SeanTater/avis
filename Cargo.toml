@@ -26,6 +26,7 @@ bevy_fly_camera = "*"
 geojson = {version="*", features=["geo-types"]}
 geo = "*"
 delaunator = "*"
+itertools = "*"
 
 [patch.crates-io]
 ttf2mesh-sys = { git = "https://github.com/SeanTater/ttf2mesh-rs", branch = "feature/fix-osx" }
