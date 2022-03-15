@@ -45,7 +45,7 @@ impl Scatterplot {
                         .into(),
                     ),
                     material,
-                    transform: Transform::from_translation(Vec3::from([lat, lon, alt])),
+                    transform: Transform::from_translation(Vec3::from([lon, alt, lat])),
                     ..Default::default()
                 })
                 .insert(ScatterplotPoint);
