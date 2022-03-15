@@ -1,4 +1,5 @@
 pub mod errors;
+pub mod feature;
 pub mod meshutil;
 pub mod people;
 pub mod scatterplot;
@@ -6,4 +7,3 @@ pub mod theater;
 pub mod usmap;
 pub mod util;
 pub mod visuals;
-pub mod feature;

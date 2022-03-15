@@ -11,7 +11,7 @@ impl Default for Theater {
         Theater {
             width: -5.0..=5.0,
             height: 0.0..=5.0,
-            depth: -5.0..=5.0, 
+            depth: -5.0..=5.0,
         }
     }
 }
@@ -32,14 +32,14 @@ fn setup_world(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Floor, if there is any meaning to it.
-    commands.spawn_bundle(PbrBundle {
-        mesh: meshes.add(bevy::prelude::shape::Plane { size: 100. }.into()),
-        material: materials.add(StandardMaterial {
-            base_color: Color::ANTIQUE_WHITE,
-            ..Default::default()
-        }),
-        ..Default::default()
-    });
+    // commands.spawn_bundle(PbrBundle {
+    //     mesh: meshes.add(bevy::prelude::shape::Plane { size: 100. }.into()),
+    //     material: materials.add(StandardMaterial {
+    //         base_color: Color::ANTIQUE_WHITE,
+    //         ..Default::default()
+    //     }),
+    //     ..Default::default()
+    // });
 
     commands.spawn_bundle(DirectionalLightBundle {
         directional_light: DirectionalLight {

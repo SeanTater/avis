@@ -10,7 +10,7 @@ pub struct Scatterplot {
     pub lats: Feature,
     pub lons: Feature,
     pub alts: Feature,
-    pub sizes: Feature
+    pub sizes: Feature,
 }
 #[derive(Component, Clone)]
 pub struct ScatterplotPoint;
@@ -21,7 +21,12 @@ impl Scatterplot {
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<StandardMaterial>>,
     ) {
-        for (lat, lon, alt, size) in izip!(plot.lats.convert(), plot.lons.convert(), plot.alts.convert(), plot.sizes.convert()) {
+        for (lat, lon, alt, size) in izip!(
+            plot.lats.convert(),
+            plot.lons.convert(),
+            plot.alts.convert(),
+            plot.sizes.convert()
+        ) {
             let material = materials.add(StandardMaterial {
                 base_color: Color::rgb(rand::random(), rand::random(), rand::random()),
                 alpha_mode: AlphaMode::Blend,
