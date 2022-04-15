@@ -10,9 +10,8 @@ use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
 
 #[derive(Component)]
-pub struct County {
+pub struct State {
     name: String,
-    state: String,
     polygon: geo::Polygon<f32>,
 }
 pub struct USMapPlugin;
@@ -32,83 +31,20 @@ impl USMap {
         })
     }
 
-    fn read_counties(&self) -> Result<Vec<County>> {
-        let states = [
-            "",
-            "Alabama",
-            "Alaska",
-            "Arizona",
-            "Arkansas",
-            "California",
-            "Colorado",
-            "Connecticut",
-            "Delaware",
-            "Florida",
-            "Georgia",
-            "Hawaii",
-            "Idaho",
-            "Illinois",
-            "Indiana",
-            "Iowa",
-            "Kansas",
-            "Kentucky",
-            "Louisiana",
-            "Maine",
-            "Maryland",
-            "Massachusetts",
-            "Michigan",
-            "Minnesota",
-            "Mississippi",
-            "Missouri",
-            "Montana",
-            "Nebraska",
-            "Nevada",
-            "New Hampshire",
-            "New Jersey",
-            "New Mexico",
-            "New York",
-            "North Carolina",
-            "North Dakota",
-            "Ohio",
-            "Oklahoma",
-            "Oregon",
-            "Pennsylvania",
-            "Rhode Island",
-            "South Carolina",
-            "South Dakota",
-            "Tennessee",
-            "Texas",
-            "Utah",
-            "Vermont",
-            "Virginia",
-            "Washington",
-            "West Virginia",
-            "Wisconsin",
-            "Wyoming",
-        ];
+    fn read_counties(&self) -> Result<Vec<State>> {
 
         // This JSON is invalid UTF8, unfortunately, so we fix it on the fly, which uses more memory.
-        let shapes = std::fs::read("us-maps/geojson/county.geo.json")?;
+        let shapes = std::fs::read("us-maps/geojson/state.geo.json")?;
         let shapes = String::from_utf8_lossy(&shapes)
             .into_owned()
             .parse::<geojson::GeoJson>()?;
         let mut counties = vec![];
         for feature in geojson::FeatureCollection::try_from(shapes)?.features {
             let name = feature
-                .property("NAMELSAD10")
-                .ok_or(anyhow!("County missing name"))?
+                .property("NAME10")
+                .ok_or(anyhow!("State missing name"))?
                 .as_str()
-                .ok_or(anyhow!("County name is not a string"))?
-                .to_string();
-            let state_number = feature
-                .property("STATEFP10")
-                .ok_or(anyhow!("County missing state number"))?
-                .as_str()
-                .ok_or(anyhow!("County state number is not an integer in a string"))?
-                .parse::<usize>()?;
-            let state = states
-                .get(state_number)
-                .unwrap_or(&"Other Territory")
+                .ok_or(anyhow!("State name is not a string"))?
                 .to_string();
             if feature.geometry.is_none() {
                 continue;
@@ -120,9 +56,8 @@ impl USMap {
                 _ => vec![],
             };
             for polygon in polygons {
-                counties.push(County {
+                counties.push(State {
                     name: name.clone(),
-                    state: state.clone(),
                     polygon,
                 })
             }
@@ -154,7 +89,6 @@ fn setup_counties(
         // We could simplify the polygons to accelerate rendering, but it seems unnecessary.
         //.map(|poly| poly.simplifyvw_preserve(&0.0001))
         let poly = &county.polygon;
-        eprint!(".");
         let altitude = rand::random::<f32>() / 50.0;
         let tris = delaunator::triangulate(
             &poly
@@ -167,6 +101,8 @@ fn setup_counties(
                 })
                 .collect::<Vec<_>>(),
         );
+
+        eprintln!("{}, {} points, {} triangles", county.name, poly.exterior().points().count(), tris.len());
 
         let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
         let positions = poly
