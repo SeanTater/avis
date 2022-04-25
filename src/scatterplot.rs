@@ -11,6 +11,7 @@ pub struct Scatterplot {
     pub lons: Feature,
     pub alts: Feature,
     pub sizes: Feature,
+    pub colors: Vec<Color>,
 }
 #[derive(Component, Clone)]
 pub struct ScatterplotPoint;
@@ -21,14 +22,15 @@ impl Scatterplot {
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<StandardMaterial>>,
     ) {
-        for (lat, lon, alt, size) in izip!(
+        for (lat, lon, alt, size, base_color) in izip!(
             plot.lats.convert(),
             plot.lons.convert(),
             plot.alts.convert(),
-            plot.sizes.convert()
+            plot.sizes.convert(),
+            plot.colors.clone()
         ) {
             let material = materials.add(StandardMaterial {
-                base_color: Color::rgb(rand::random(), rand::random(), rand::random()),
+                base_color,
                 alpha_mode: AlphaMode::Blend,
                 unlit: false,
                 ..Default::default()
