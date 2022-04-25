@@ -368,9 +368,9 @@ fn setup_counties(
         .into_iter()
         .map(|v| v.to_array())
         .collect::<Vec<_>>();
-        mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-        mesh.set_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-        mesh.set_attribute(Mesh::ATTRIBUTE_UV_0, uv0);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uv0);
         mesh.set_indices(Some(Indices::U32(indices)));
 
         let material = materials.add(StandardMaterial {

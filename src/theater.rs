@@ -20,7 +20,7 @@ impl Plugin for Theater {
         app.insert_resource(bevy_atmosphere::AtmosphereMat::default())
             .insert_resource(Msaa { samples: 4 })
             .add_plugins(DefaultPlugins)
-            .add_plugin(bevy_atmosphere::AtmospherePlugin { dynamic: false })
+            .add_plugin(bevy_atmosphere::AtmospherePlugin { dynamic: false, sky_radius: 100.0 })
             .add_plugin(bevy_fly_camera::FlyCameraPlugin)
             .add_startup_system(setup_world);
     }

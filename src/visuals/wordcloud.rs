@@ -37,7 +37,7 @@ impl WordCloudVisual {
             .insert_resource(self)
             .add_plugins(DefaultPlugins)
             .add_plugin(TextMeshPlugin)
-            .add_plugin(bevy_atmosphere::AtmospherePlugin { dynamic: false })
+            .add_plugin(bevy_atmosphere::AtmospherePlugin { dynamic: false, sky_radius: 100.0 })
             .add_plugin(bevy_fly_camera::FlyCameraPlugin)
             .add_startup_system(setup_background)
             .add_startup_system(setup_cloud)
@@ -168,13 +168,13 @@ fn setup_cloud(
 
 /// Keep the legend pointing at the camera all the time
 fn lock_rotations(
-    mut transform_pair: QuerySet<(
-        QueryState<&Transform, With<Camera>>,
-        QueryState<&mut Transform, With<RotateLock>>,
+    mut transform_pair: ParamSet<(
+        Query<&Transform, With<Camera>>,
+        Query<&mut Transform, With<RotateLock>>,
     )>,
 ) {
-    let camera_translation = transform_pair.q0().single().translation;
-    for mut locked_transform in transform_pair.q1().iter_mut() {
+    let camera_translation = transform_pair.p0().single().translation;
+    for mut locked_transform in transform_pair.p1().iter_mut() {
         // eh - why negative?
         *locked_transform = locked_transform.looking_at(-camera_translation, Vec3::Y);
     }
